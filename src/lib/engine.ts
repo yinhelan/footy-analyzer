@@ -82,6 +82,28 @@ const stakeByRisk = (risk: RiskLevel, crowded: boolean): number => {
 
 const riskScore = (risk: RiskLevel) => (risk === '低' ? 1 : risk === '中' ? 2 : 3)
 
+const localizeRisk = (risk: RiskLevel, en: boolean) => {
+  if (!en) return risk
+  if (risk === '低') return 'Low'
+  if (risk === '中') return 'Medium'
+  return 'High'
+}
+
+const localizeRec = (rec: '主胜' | '平' | '客胜', en: boolean) => {
+  if (!en) return rec
+  if (rec === '主胜') return 'Home win'
+  if (rec === '平') return 'Draw'
+  return 'Away win'
+}
+
+const localizeHandicapRec = (rec: '让胜' | '让平' | '让负' | undefined, en: boolean) => {
+  if (!rec) return '—'
+  if (!en) return rec
+  if (rec === '让胜') return 'Handicap home'
+  if (rec === '让平') return 'Handicap draw'
+  return 'Handicap away'
+}
+
 const parseTimeToHours = (t?: string) => {
   if (!t) return undefined
   const v = t.trim().toLowerCase()
@@ -195,7 +217,7 @@ const analyzeV38 = (matches: MatchInput[], config: StrategyConfig): AnalysisResu
     lines.push(`- H_fav：${hFav ?? '数据缺失/未验证'}`)
     lines.push(`- PL_fav：${plFav ?? '数据缺失/未验证'}`)
     lines.push(en ? `- Time T: ${m.timePoint ?? 'missing/unverified'}` : `- 时间点T：${m.timePoint ?? '数据缺失/未验证'}`)
-    lines.push(`- 快照数(T1/T2...)：${snapshotCount}`)
+    lines.push(en ? `- Snapshot count (T1/T2...): ${snapshotCount}` : `- 快照数(T1/T2...)：${snapshotCount}`)
 
     const criticalMissing =
       vTotal == null || hFav == null || plFav == null || !m.timePoint || snapshotCount < 2
@@ -203,14 +225,14 @@ const analyzeV38 = (matches: MatchInput[], config: StrategyConfig): AnalysisResu
       lines.push(en ? '2) Risk Audit Table' : '2) 风险审计表')
       lines.push('| 项目 | 结果 |')
       lines.push('|---|---|')
-      lines.push('| 状态 | 停机协议触发 |')
+      lines.push(en ? '| Status | Hard-stop triggered |' : '| 状态 | 停机协议触发 |')
       lines.push(en ? '3) Key Evidence' : '3) 关键证据')
-      lines.push('- A1失败：关键字段缺失或快照不足（需至少T1/T2）')
+      lines.push(en ? '- A1 failed: critical fields missing or snapshots < 2 (need T1/T2)' : '- A1失败：关键字段缺失或快照不足（需至少T1/T2）')
       lines.push(en ? '4) Research Notes (non-execution)' : '4) 研究性建议（非执行）')
-      lines.push('- 当前禁止风险判定，请补齐数据后重算')
-      lines.push('5) 数据索取清单')
-      lines.push('- 至少两档快照：T1/T2（H_fav, PL_fav, V_total）')
-      lines.push('- 明确时间点T（示例：T=0.8h / T=45m）')
+      lines.push(en ? '- Risk audit is blocked. Please complete fields and rerun.' : '- 当前禁止风险判定，请补齐数据后重算')
+      lines.push(en ? '5) Data request checklist' : '5) 数据索取清单')
+      lines.push(en ? '- At least two snapshots: T1/T2 (H_fav, PL_fav, V_total)' : '- 至少两档快照：T1/T2（H_fav, PL_fav, V_total）')
+      lines.push(en ? '- Explicit time point T (e.g. T=0.8h / T=45m)' : '- 明确时间点T（示例：T=0.8h / T=45m）')
       lines.push('')
       analyses.push({
         match: m,
@@ -346,20 +368,22 @@ const analyzeV38 = (matches: MatchInput[], config: StrategyConfig): AnalysisResu
     }
 
     lines.push(en ? '2) Risk Audit Table' : '2) 风险审计表')
-    lines.push('| 项目 | 数值 |')
+    lines.push(en ? '| Item | Value |' : '| 项目 | 数值 |')
     lines.push('|---|---|')
     lines.push(`| ratio | ${ratio.toFixed(2)}% |`)
-    lines.push(`| 标签 | ${tag} |`)
-    lines.push(`| 决定性规则 | ${decisive ? `${decisive[0]}（优先级#${decisive[1]}）` : '无'} |`)
-    lines.push(`| 决定性规则解释 | ${decisiveExplanation} |`)
+    lines.push(en ? `| Tag | ${tag} |` : `| 标签 | ${tag} |`)
+    lines.push(en ? `| Decisive Rule | ${decisive ? `${decisive[0]} (priority #${decisive[1]})` : 'none'} |` : `| 决定性规则 | ${decisive ? `${decisive[0]}（优先级#${decisive[1]}）` : '无'} |`)
+    lines.push(en ? `| Decisive Rule Explanation | ${decisiveExplanation} |` : `| 决定性规则解释 | ${decisiveExplanation} |`)
     lines.push(
-      `| Top3规则 | ${rankedRules.length ? rankedRules.slice(0, 3).map((r) => `${r[0]}(#${r[1]})`).join('；') : '无'} |`,
+      en
+        ? `| Top 3 Rules | ${rankedRules.length ? rankedRules.slice(0, 3).map((r) => `${r[0]}(#${r[1]})`).join('; ') : 'none'} |`
+        : `| Top3规则 | ${rankedRules.length ? rankedRules.slice(0, 3).map((r) => `${r[0]}(#${r[1]})`).join('；') : '无'} |`,
     )
-    lines.push(`| 触发规则 | ${rankedRules.length ? rankedRules.map((r) => r[0]).join('；') : '无'} |`)
+    lines.push(en ? `| Triggered Rules | ${rankedRules.length ? rankedRules.map((r) => r[0]).join('; ') : 'none'} |` : `| 触发规则 | ${rankedRules.length ? rankedRules.map((r) => r[0]).join('；') : '无'} |`)
     lines.push(en ? '3) Key Evidence' : '3) 关键证据')
     evidence.slice(0, 6).forEach((e) => lines.push(`- ${e}`))
     lines.push(en ? '4) Research Notes (non-execution)' : '4) 研究性建议（非执行）')
-    lines.push(`- 风险等级：${risk}（仅研究用途，不构成执行建议）`)
+    lines.push(en ? `- Risk level: ${localizeRisk(risk, true)} (research-only, not execution advice)` : `- 风险等级：${risk}（仅研究用途，不构成执行建议）`)
     lines.push(en ? '5) Review Mapping (optional)' : '5) 复盘映射（可选）')
     lines.push(en ? '- Use /lock /settle /review /tune for review workflow' : '- 可用 /lock /settle /review /tune 归档迭代')
     lines.push('')
@@ -382,7 +406,9 @@ const analyzeV38 = (matches: MatchInput[], config: StrategyConfig): AnalysisResu
       parlay: 0,
       single: 0,
       coldHedge: 0,
-      note: 'v3.8硬规则模式：仅输出研究性风险信息，不输出执行建议',
+      note: en
+        ? 'v3.8 hard-rule mode: research-only risk output (no execution suggestion)'
+        : 'v3.8硬规则模式：仅输出研究性风险信息，不输出执行建议',
     },
     outputText: lines.join('\n'),
   }
@@ -437,11 +463,17 @@ export const analyzeMatches = (
 
     const triggerColdDraw = (mainSig.crowded || mainSig.veryHot) && negativePnl
 
-    const reasons = [
-      `交易占比最大方向：${rec}（${recShare || '—'}%）`,
-      `冷热信号：${recHeat || 0}`,
-      `庄家盈亏（推荐方向）：${recPnl ?? '—'}`,
-    ].slice(0, 3)
+    const reasons = en
+      ? [
+          `Top share direction: ${localizeRec(rec, true)} (${recShare || '—'}%)`,
+          `Heat signal: ${recHeat || 0}`,
+          `Book P/L (pick side): ${recPnl ?? '—'}`,
+        ].slice(0, 3)
+      : [
+          `交易占比最大方向：${rec}（${recShare || '—'}%）`,
+          `冷热信号：${recHeat || 0}`,
+          `庄家盈亏（推荐方向）：${recPnl ?? '—'}`,
+        ].slice(0, 3)
 
     return {
       match: m,
@@ -466,8 +498,12 @@ export const analyzeMatches = (
     single: singlePick ? config.singleBudget : 0,
     coldHedge: coldTriggered ? config.coldBudget : 0,
     note: coldTriggered
-      ? `触发条件博冷（防平）${config.coldBudget} RMB`
-      : `${config.coldBudget} RMB 留空`,
+      ? en
+        ? `Conditional hedge triggered (draw) ${config.coldBudget} RMB`
+        : `触发条件博冷（防平）${config.coldBudget} RMB`
+      : en
+        ? `${config.coldBudget} RMB reserved`
+        : `${config.coldBudget} RMB 留空`,
   }
 
   const lines: string[] = []
@@ -479,8 +515,8 @@ export const analyzeMatches = (
   analyses.forEach((a, idx) => {
     const m = a.match
     lines.push(`${idx + 1}. ${m.homeTeam} vs ${m.awayTeam}`)
-    lines.push(en ? `- Pick: ${a.recommendation}` : `- 推荐：${a.recommendation}`)
-    lines.push(en ? `- Risk: ${a.risk} (stake ${a.stakeU}u)` : `- 风险：${a.risk}（仓位 ${a.stakeU}u）`)
+    lines.push(en ? `- Pick: ${localizeRec(a.recommendation, true)}` : `- 推荐：${a.recommendation}`)
+    lines.push(en ? `- Risk: ${localizeRisk(a.risk, true)} (stake ${a.stakeU}u)` : `- 风险：${a.risk}（仓位 ${a.stakeU}u）`)
     lines.push(en ? `- Reasons: ${a.reasons.join('; ')}` : `- 理由：${a.reasons.join('；')}`)
     if (a.triggerColdDraw) lines.push(en ? `- Conditional hedge: draw (${config.coldBudget} RMB)` : `- 条件博冷：防平（${config.coldBudget} RMB）`)
     lines.push('')
@@ -507,34 +543,46 @@ export const analyzeMatches = (
       const line = typeof m.handicapLine === 'number' ? `${m.handicapLine}` : '—'
       const budget = handicapBudgetMap.get(m.id) ?? 0
       const risk = a.handicapRisk ?? '高'
-      const riskWarn = risk === '高' ? '（警示）' : ''
+      const riskWarn = risk === '高' ? (en ? ' (warning)' : '（警示）') : ''
       lines.push(`${idx + 1}. ${m.homeTeam} vs ${m.awayTeam}`)
       lines.push(en ? `- Line: ${line}` : `- 让球线：${line}`)
-      lines.push(en ? `- Pick: ${a.handicapRecommendation}` : `- 推荐：${a.handicapRecommendation}`)
-      lines.push(en ? `- Risk tag: ${risk}${riskWarn}` : `- 风险标签：${risk}${riskWarn}`)
+      lines.push(en ? `- Pick: ${localizeHandicapRec(a.handicapRecommendation, true)}` : `- 推荐：${a.handicapRecommendation}`)
+      lines.push(en ? `- Risk tag: ${localizeRisk(risk, true)}${riskWarn}` : `- 风险标签：${risk}${riskWarn}`)
       lines.push(en ? `- Handicap budget: ${budget} RMB` : `- 让球预算分配：${budget} RMB`)
       lines.push('')
     })
   }
 
-  lines.push(`【预算（${config.totalBudget} RMB + 让球额外${config.handicapExtraBudget} RMB）】`)
+  lines.push(
+    en
+      ? `[Budget (${config.totalBudget} RMB + handicap extra ${config.handicapExtraBudget} RMB)]`
+      : `【预算（${config.totalBudget} RMB + 让球额外${config.handicapExtraBudget} RMB）】`,
+  )
   if (parlayPicks.length >= 2) {
     lines.push(
-      `- 主串(2串1)：${config.parlayBudget} RMB（${parlayPicks[0].match.homeTeam} vs ${parlayPicks[0].match.awayTeam} + ${parlayPicks[1].match.homeTeam} vs ${parlayPicks[1].match.awayTeam}）`,
+      en
+        ? `- Parlay (2-leg): ${config.parlayBudget} RMB (${parlayPicks[0].match.homeTeam} vs ${parlayPicks[0].match.awayTeam} + ${parlayPicks[1].match.homeTeam} vs ${parlayPicks[1].match.awayTeam})`
+        : `- 主串(2串1)：${config.parlayBudget} RMB（${parlayPicks[0].match.homeTeam} vs ${parlayPicks[0].match.awayTeam} + ${parlayPicks[1].match.homeTeam} vs ${parlayPicks[1].match.awayTeam}）`,
     )
   } else {
-    lines.push('- 主串(2串1)：0 RMB（场次不足）')
+    lines.push(en ? '- Parlay (2-leg): 0 RMB (insufficient matches)' : '- 主串(2串1)：0 RMB（场次不足）')
   }
   if (singlePick) {
     lines.push(
-      `- 机动单场：${config.singleBudget} RMB（${singlePick.match.homeTeam} vs ${singlePick.match.awayTeam}）`,
+      en
+        ? `- Single flex: ${config.singleBudget} RMB (${singlePick.match.homeTeam} vs ${singlePick.match.awayTeam})`
+        : `- 机动单场：${config.singleBudget} RMB（${singlePick.match.homeTeam} vs ${singlePick.match.awayTeam}）`,
     )
   } else {
-    lines.push('- 机动单场：0 RMB')
+    lines.push(en ? '- Single flex: 0 RMB' : '- 机动单场：0 RMB')
   }
-  lines.push(`- 条件博冷：${budgetPlan.coldHedge} RMB`)
-  lines.push(`- 让球独立预算：${config.handicapExtraBudget} RMB（分配规则：30+20）`)
-  lines.push(`- 说明：${budgetPlan.note}`)
+  lines.push(en ? `- Conditional hedge: ${budgetPlan.coldHedge} RMB` : `- 条件博冷：${budgetPlan.coldHedge} RMB`)
+  lines.push(
+    en
+      ? `- Handicap extra budget: ${config.handicapExtraBudget} RMB (allocation: 30+20)`
+      : `- 让球独立预算：${config.handicapExtraBudget} RMB（分配规则：30+20）`,
+  )
+  lines.push(en ? `- Notes: ${budgetPlan.note}` : `- 说明：${budgetPlan.note}`)
 
   return {
     parsedCount: matches.length,

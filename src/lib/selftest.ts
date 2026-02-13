@@ -233,6 +233,14 @@ const pair = findLatestTwoSameMatch(mockHistory, mockHistory[0])
 const cmp = compareHistoryItems(mockHistory[0], mockHistory[1], 'zh')
 const cmpEn = compareHistoryItems(mockHistory[0], mockHistory[1], 'en')
 
+const enBlacklist = ['【预算（', '让球独立预算', '机动单场', '主串(2串1)', '条件博冷：', '说明：']
+const enContainsBlacklisted = enBlacklist.some((k) => resultEn.outputText.includes(k))
+const enCjkRatio = (() => {
+  const total = resultEn.outputText.length || 1
+  const cjk = (resultEn.outputText.match(/[\u4e00-\u9fff]/g) || []).length
+  return cjk / total
+})()
+
 const checks = [
   {
     name: '解析场次=2',
@@ -517,7 +525,15 @@ const checks = [
   },
   {
     name: 'engine 常规输出支持英文',
-    ok: resultEn.outputText.includes('[Footy Analyzer V1 Suggestions]') && resultEn.outputText.includes('Parsed matches:'),
+    ok:
+      resultEn.outputText.includes('[Footy Analyzer V1 Suggestions]') &&
+      resultEn.outputText.includes('Parsed matches:') &&
+      resultEn.outputText.includes('[Budget (100 RMB + handicap extra 50 RMB)]') &&
+      !enContainsBlacklisted,
+  },
+  {
+    name: '英文输出语言完整性（黑名单+中文占比）',
+    ok: !enContainsBlacklisted && enCjkRatio < 0.2,
   },
   {
     name: 'engine v3.8 输出支持英文',

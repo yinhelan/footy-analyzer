@@ -147,6 +147,7 @@ pnpm selftest
 - 全站 `button:focus-visible` 统一为 2px 灰蓝 `box-shadow` 光晕（link-btn 复用全局焦点样式）
 - 图例显示状态持久化到 localStorage（非法值回退为展开）
 - 主面板显示提示：当前级别会影响“复制脱敏诊断包”
+- 语言完整性：英文输出已清理预算/让球等关键段落的中文混排，并在 selftest 增加黑名单+中文占比校验
 
 ## V1.1 当前进度（增强版）
 - 已支持字段：
